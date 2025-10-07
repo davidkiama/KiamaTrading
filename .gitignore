@@ -1,0 +1,10 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+.env
+*.log
+
+db.sqlite3 # Default Django SQLite database
+
+
+*.DS_Store 
