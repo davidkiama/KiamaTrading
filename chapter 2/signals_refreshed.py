@@ -37,20 +37,20 @@ def signal(data):
     for i in range(21, len(data) - 1):
         try:
             # Bullish (buy) condition
-            if (data[i, 3] < data[i - 5, 3] and  # low < low[-5]
-                data[i, 3] < data[i - 13, 3] and  # low < low[-13]
-                data[i, 3] > data[i - 21, 3] and  # low > low[-21]
-                data[i, 4] > data[i - 3, 4] and   # close > close[-3]
+            if (data[i, 2] < data[i - 5, 2] and  # low < low[-5]
+                data[i, 2] < data[i - 13, 2] and  # low < low[-13]
+                data[i, 2] > data[i - 21, 2] and  # low > low[-21]
+                data[i, 3] > data[i - 3, 3] and   # close > close[-3]
                     data[i, -1] == 0):
-                data[i + 1, -1] = 1  # signal on next open
+                data[i + 1, -1] = 8888  # signal on next open
 
             # Bearish (sell) condition
-            elif (data[i, 2] > data[i - 5, 2] and  # high > high[-5]
-                  data[i, 2] > data[i - 13, 2] and  # high > high[-13]
-                  data[i, 2] < data[i - 21, 2] and  # high < high[-21]
-                  data[i, 4] < data[i - 3, 4] and   # close < close[-3]
+            elif (data[i, 1] > data[i - 5, 1] and  # high > high[-5]
+                  data[i, 1] > data[i - 13, 1] and  # high > high[-13]
+                  data[i, 1] < data[i - 21, 1] and  # high < high[-21]
+                  data[i, 3] < data[i - 3, 3] and   # close < close[-3]
                   data[i, -1] == 0):
-                data[i + 1, -1] = -1
+                data[i + 1, -1] = 7777
         except IndexError:
             pass
 
@@ -69,6 +69,8 @@ numeric_data = my_data.select_dtypes(include=[np.number]).to_numpy()
 # 3. Remove the Volume column (last one)
 numeric_data = numeric_data[:, :-1]
 
+print(
+    f"First row - High: {numeric_data[0, 1]}, Low: {numeric_data[0, 2]}, Close: {numeric_data[0, 3]}")
 # 4. Apply signal logic
 data_with_signals = signal(numeric_data)
 
