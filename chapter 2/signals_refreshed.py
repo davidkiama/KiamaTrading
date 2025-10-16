@@ -34,7 +34,7 @@ def signal(data):
     """
     data = add_column(data, 1)  # add a new column for signals
 
-    for i in range(21, len(data) - 1):
+    for i in range(21, len(data) - 1):  # appropriate for 2 period range, MAX IS 21
         try:
             # Bullish (buy) condition
             if (data[i, 2] < data[i - 5, 2] and  # low < low[-5]
@@ -74,13 +74,46 @@ print(
 # 4. Apply signal logic
 data_with_signals = signal(numeric_data)
 
+
+def signal_exercise(data):
+    """
+    Generates trading signals based on Alpha pattern rules.
+    """
+    data = add_column(data, 1)  # add a new column for signals
+
+    for i in range(2, len(data) - 1):  # appropriate for 2 period range, MAX IS 2
+        try:
+
+            # Bullish (buy) condition
+            if (data[i, 3] > data[i-2, 3] and data[i, -1] == 0):
+                data[i + 1, -1] = 8888  # signal on next open
+
+            # Bearish (sell) condition
+            elif (data[i, 3] < data[i-2, 3] and data[i, -1] == 0):
+                data[i + 1, -1] = 7777
+        except IndexError:
+            pass
+
+    return data
+
+
+data_with_exercise_signals = signal_exercise(numeric_data)
 # 5. Convert back to DataFrame for easier export
 columns = list(my_data.select_dtypes(
     include=[np.number]).columns[:-1]) + ["Signal"]
-df_with_signals = pd.DataFrame(data_with_signals, columns=columns)
+data_with_exercise_signals = pd.DataFrame(data_with_signals, columns=columns)
 
 # 6. Save output
-df_with_signals.to_excel("my_data_with_signals.xlsx", index=False)
+data_with_exercise_signals.to_excel(
+    "my_data_with_exercise_signals.xlsx", index=False)
 
-print("✅ Done! Signals saved to my_data_with_signals.xlsx")
-print(df_with_signals.tail())
+# # 5. Convert back to DataFrame for easier export
+# columns = list(my_data.select_dtypes(
+#     include=[np.number]).columns[:-1]) + ["Signal"]
+# df_with_signals = pd.DataFrame(data_with_signals, columns=columns)
+
+# # 6. Save output
+# df_with_signals.to_excel("my_data_with_signals.xlsx", index=False)
+
+# print("✅ Done! Signals saved to my_data_with_signals.xlsx")
+# print(df_with_signals.tail())
