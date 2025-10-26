@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
 
@@ -113,7 +112,7 @@ def signal_chart_arrow(data, window=250):
 # MAIN WORKFLOW
 # -----------------------------------------------------
 # 1. Fetch data
-my_data = yf.download("USDCHF=X", period="30d", interval="1h")
+my_data = yf.download("USDCHF=X", period="60d", interval="1h")
 
 # 2. Keep only OHLC
 my_data = my_data[['Open', 'High', 'Low', 'Close']]
