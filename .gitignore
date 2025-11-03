@@ -11,3 +11,4 @@ db.sqlite3 # Default Django SQLite database
 *.crt
 *.key
 *.pdf
+*config.py
