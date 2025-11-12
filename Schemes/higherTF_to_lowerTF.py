@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Converted from Jupyter Notebook: notebook.ipynb
-Conversion Date: 2025-11-10T20:01:07.158Z
-"""
-
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-FVG + Multi-Timeframe Bullish Breakout Strategy → Live OANDA Trading
-Trades EURUSD using 1H, 30M, and 15M candle data with FVG signals
+FVG + Multi-Timeframe Breakout Strategy → Live OANDA Trading
+Trades a configurable instrument (default USD_JPY) using 1H, 30M, and 15M candle data with FVG signals
 """
 
 from config import access_token, accountID
@@ -23,23 +16,32 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
+
+# ========================================
+# CONFIGURATION VARIABLES
+# ========================================
+
+# ← Change this to any instrument (e.g., "EUR_USD", "GBP_USD")
+INSTRUMENT = "USD_JPY"
+N = 15                   # Run interval in minutes
+
+
 # ========================================
 # 1. FVG DETECTION
 # ========================================
 
-
 def detect_fvg(data, lookback_period=10, body_multiplier=1.5):
     fvg_list = [None, None]
     for i in range(2, len(data)):
-        first_high = data['High'].iloc[i-2]
-        first_low = data['Low'].iloc[i-2]
-        middle_open = data['Open'].iloc[i-1]
-        middle_close = data['Close'].iloc[i-1]
+        first_high = data['High'].iloc[i - 2]
+        first_low = data['Low'].iloc[i - 2]
+        middle_open = data['Open'].iloc[i - 1]
+        middle_close = data['Close'].iloc[i - 1]
         third_low = data['Low'].iloc[i]
         third_high = data['High'].iloc[i]
 
-        prev_bodies = (data['Close'].iloc[max(0, i-1-lookback_period):i-1] -
-                       data['Open'].iloc[max(0, i-1-lookback_period):i-1]).abs()
+        prev_bodies = (data['Close'].iloc[max(0, i - 1 - lookback_period):i - 1] -
+                       data['Open'].iloc[max(0, i - 1 - lookback_period):i - 1]).abs()
         avg_body_size = prev_bodies.mean()
         avg_body_size = avg_body_size if avg_body_size > 0 else 0.0001
         middle_body = abs(middle_close - middle_open)
@@ -52,10 +54,10 @@ def detect_fvg(data, lookback_period=10, body_multiplier=1.5):
             fvg_list.append(None)
     return fvg_list
 
+
 # ========================================
 # 2. MULTI-TIMEFRAME FVG BREAKOUT / SELL SIGNAL
 # ========================================
-
 
 def bullish_fvg_breakout_3tf(df_1h, df_30m, df_15m):
     latest_fvg_1h = df_1h['FVG'].iloc[-1]
@@ -80,37 +82,35 @@ def bearish_fvg_sell_signal_3tf(df_1h, df_30m, df_15m):
         return True
     return False
 
+
 # ========================================
 # 3. FETCH LIVE CANDLES
 # ========================================
 
-
 def fetch_candles_multi_granularity(granularity, n=200):
-    # Set real=True for live trading
     client = CandleClient(access_token, real=False)
-    collector = client.get_collector(Pair.EUR_USD, granularity)
+    pair = getattr(Pair, INSTRUMENT)  # Dynamically use the instrument
+    collector = client.get_collector(pair, granularity)
     candles = collector.grab(n)
     df = pd.DataFrame([{
         'Open': float(str(c.bid.o)),
         'High': float(str(c.bid.h)),
         'Low': float(str(c.bid.l)),
         'Close': float(str(c.bid.c)),
-
     } for c in candles])
     df.reset_index(drop=True, inplace=True)
     df['FVG'] = detect_fvg(df)
 
     return df
 
-# ========================================
-# 4. TRADING JOB (Runs every 15 mins)
-# ========================================
 
+# ========================================
+# 4. TRADING JOB (Runs every N mins)
+# ========================================
 
 def trading_job():
-    print(f"\n[{datetime.now(pytz.timezone('America/Chicago'))}] Running multi-timeframe FVG Strategy...")
+    print(f"\n[{datetime.now(pytz.timezone('America/Chicago'))}] Running {INSTRUMENT} Multi-Timeframe FVG Strategy...")
 
-    # Fetch candles on 1H, 30M, and 15M
     df_1h = fetch_candles_multi_granularity(Gran.H1)
     df_30m = fetch_candles_multi_granularity(Gran.M30)
     df_15m = fetch_candles_multi_granularity(Gran.M15)
@@ -122,10 +122,10 @@ def trading_job():
     prev_low = df_15m['Low'].iloc[-2]
     prev_high = df_15m['High'].iloc[-2]
 
-    print(f"Current Price (15m): {current_price:.5f}")
+    print(f"Current Price (15m): {current_price:.3f}")
 
     SLTPRatio = 1.8
-    risk_units = 1000  # Fixed units per trade, adjust as needed
+    risk_units = 1000
 
     if bullish_buy:
         sl = prev_low
@@ -135,13 +135,13 @@ def trading_job():
             return
 
         mo = MarketOrderRequest(
-            instrument="EUR_USD",
+            instrument=INSTRUMENT,
             units=risk_units,
-            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.5f}").data,
-            stopLossOnFill=StopLossDetails(price=f"{sl:.5f}").data
+            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.3f}").data,
+            stopLossOnFill=StopLossDetails(price=f"{sl:.3f}").data
         )
         print(
-            f"BUY SIGNAL: Entry ~{current_price:.5f}, TP={tp:.5f}, SL={sl:.5f}")
+            f"BUY SIGNAL [{INSTRUMENT}]: Entry ~{current_price:.3f}, TP={tp:.3f}, SL={sl:.3f}")
 
     elif bearish_sell:
         sl = prev_high
@@ -151,13 +151,13 @@ def trading_job():
             return
 
         mo = MarketOrderRequest(
-            instrument="EUR_USD",
+            instrument=INSTRUMENT,
             units=-risk_units,
-            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.5f}").data,
-            stopLossOnFill=StopLossDetails(price=f"{sl:.5f}").data
+            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.3f}").data,
+            stopLossOnFill=StopLossDetails(price=f"{sl:.3f}").data
         )
         print(
-            f"SELL SIGNAL: Entry ~{current_price:.5f}, TP={tp:.5f}, SL={sl:.5f}")
+            f"SELL SIGNAL [{INSTRUMENT}]: Entry ~{current_price:.3f}, TP={tp:.3f}, SL={sl:.3f}")
 
     else:
         print("No valid trade signal at this time.")
@@ -171,23 +171,27 @@ def trading_job():
     except Exception as e:
         print("Order failed:", str(e))
 
-# ========================================
-# 5. SCHEDULER (Every 15 mins)
-# ========================================
 
+# ========================================
+# 5. SCHEDULER (Every N mins)
+# ========================================
 
 if __name__ == "__main__":
+    run_minutes = ",".join(str(i) for i in range(1, 60, N))
+
     scheduler = BlockingScheduler()
-    # Run at 1,16,31,46 minutes past the hour (aligned with 15m candle close)
     scheduler.add_job(
         trading_job,
         'cron',
         day_of_week='mon-fri',
         hour='0-23',
-        minute='1,16,31,46',
-        timezone='America/Chicago'
+        minute=run_minutes,
+        timezone='America/Chicago',
+        misfire_grace_time=120,
     )
-    print("Multi-Timeframe FVG OANDA Trader Started. Waiting for next 15m candle...")
+
+    print(f"{INSTRUMENT} Multi-Timeframe FVG OANDA Trader Started.")
+    print(f"Running every {N} minutes at [{run_minutes}] past each hour...")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 FVG + Key Level Breakout Strategy → Live OANDA Trading
-Uses real-time 15m EURUSD data from OANDA
+Uses real-time 15m XAU/USD data from OANDA (configurable instrument)
 """
 
 import pandas as pd
@@ -16,6 +16,12 @@ from oandapyV20.contrib.requests import MarketOrderRequest, TakeProfitDetails, S
 from oanda_candles import Pair, Gran, CandleClient
 from config import access_token, accountID
 from tqdm import tqdm
+
+# ========================================
+# CONFIGURATION
+# ========================================
+# Change this to any OANDA-supported instrument (e.g. "EUR_USD", "GBP_USD", "USD_JPY")
+INSTRUMENT = "USD_CHF"
 
 # ========================================
 # 1. FVG DETECTION
@@ -46,10 +52,10 @@ def detect_fvg(data, lookback_period=10, body_multiplier=1.5):
             fvg_list.append(None)
     return fvg_list
 
+
 # ========================================
 # 2. KEY LEVEL DETECTION
 # ========================================
-
 
 def detect_key_levels(df, current_candle, backcandles=50, test_candles=10):
     key_levels = {"support": [], "resistance": []}
@@ -87,10 +93,10 @@ def fill_key_levels(df, backcandles=50, test_candles=10):
             }
     return df
 
+
 # ========================================
 # 3. BREAK SIGNAL DETECTION
 # ========================================
-
 
 def detect_break_signal(df):
     df = df.copy()
@@ -104,57 +110,55 @@ def detect_break_signal(df):
             prev_close = df.loc[i-1, "Close"]
 
             if fvg_type == "bullish":
-                for (lvl_idx, lvl_price) in key_levels.get("resistance", []):
+                for (_, lvl_price) in key_levels.get("resistance", []):
                     if prev_open < lvl_price < prev_close:
                         df.loc[i, "break_signal"] = 2
                         break
             elif fvg_type == "bearish":
-                for (lvl_idx, lvl_price) in key_levels.get("support", []):
+                for (_, lvl_price) in key_levels.get("support", []):
                     if prev_open > lvl_price > prev_close:
                         df.loc[i, "break_signal"] = 1
                         break
     return df
 
+
 # ========================================
 # 4. FETCH LIVE CANDLES
 # ========================================
 
-
 def get_candles(n=200):
-    client = CandleClient(access_token, real=False)  # Set real=True for live
-    collector = client.get_collector(Pair.EUR_USD, Gran.M15)
+    # Set real=True for live trading
+    client = CandleClient(access_token, real=False)
+    pair_map = getattr(Pair, INSTRUMENT, None)
+    if pair_map is None:
+        raise ValueError(f"Unsupported instrument: {INSTRUMENT}")
+    collector = client.get_collector(pair_map, Gran.M15)
     candles = collector.grab(n)
     return candles
+
 
 # ========================================
 # 5. TRADING JOB (Runs every 15 mins)
 # ========================================
 
-
 def trading_job():
-    print(
-        f"\n[{datetime.now(pytz.timezone('America/Chicago'))}] Running FVG Strategy...")
+    print(f"\n[{datetime.now(pytz.timezone('America/Chicago'))}] Running FVG Strategy on {INSTRUMENT}...")
 
-    # Fetch recent 15m candles
     candles = get_candles(n=200)
     if len(candles) < 50:
         print("Not enough candles. Skipping.")
         return
 
-    # Build DataFrame
     dfstream = pd.DataFrame([{
         'Open': float(str(c.bid.o)),
         'High': float(str(c.bid.h)),
         'Low': float(str(c.bid.l)),
         'Close': float(str(c.bid.c)),
-        'Volume': c.volume
     } for c in candles])
 
     dfstream.reset_index(drop=True, inplace=True)
 
-    # ========================================
-    # Run Strategy Logic
-    # ========================================
+    # Apply strategy logic
     dfstream['FVG'] = detect_fvg(dfstream)
     dfstream = fill_key_levels(dfstream, backcandles=50, test_candles=10)
     dfstream = detect_break_signal(dfstream)
@@ -164,17 +168,14 @@ def trading_job():
     prev_low = dfstream['Low'].iloc[-2]
     prev_high = dfstream['High'].iloc[-2]
 
-    print(f"Latest Signal: {latest_signal} | Price: {current_price:.5f}")
+    print(f"Latest Signal: {latest_signal} | Price: {current_price:.3f}")
 
     if latest_signal not in [1, 2]:
         print("No valid breakout signal.")
         return
 
-    # ========================================
-    # Risk Management
-    # ========================================
     SLTPRatio = 1.8
-    risk_units = 1000  # Fixed risk per trade (adjust as needed)
+    risk_units = 100  # Adjust for your account and risk settings
 
     if latest_signal == 2:  # BUY
         sl = prev_low
@@ -184,13 +185,13 @@ def trading_job():
             return
 
         mo = MarketOrderRequest(
-            instrument="EUR_USD",
+            instrument=INSTRUMENT,
             units=risk_units,
-            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.5f}").data,
-            stopLossOnFill=StopLossDetails(price=f"{sl:.5f}").data
+            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.3f}").data,
+            stopLossOnFill=StopLossDetails(price=f"{sl:.3f}").data
         )
         print(
-            f"BUY SIGNAL: Entry ~{current_price:.5f}, TP={tp:.5f}, SL={sl:.5f}")
+            f"BUY SIGNAL: Entry ~{current_price:.3f}, TP={tp:.3f}, SL={sl:.3f}")
 
     elif latest_signal == 1:  # SELL
         sl = prev_high
@@ -200,17 +201,14 @@ def trading_job():
             return
 
         mo = MarketOrderRequest(
-            instrument="EUR_USD",
+            instrument=INSTRUMENT,
             units=-risk_units,
-            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.5f}").data,
-            stopLossOnFill=StopLossDetails(price=f"{sl:.5f}").data
+            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.3f}").data,
+            stopLossOnFill=StopLossDetails(price=f"{sl:.3f}").data
         )
         print(
-            f"SELL SIGNAL: Entry ~{current_price:.5f}, TP={tp:.5f}, SL={sl:.5f}")
+            f"SELL SIGNAL: Entry ~{current_price:.3f}, TP={tp:.3f}, SL={sl:.3f}")
 
-    # ========================================
-    # Execute Order
-    # ========================================
     try:
         client = API(access_token)
         r = orders.OrderCreate(accountID, data=mo.data)
@@ -221,20 +219,21 @@ def trading_job():
 
 
 # ========================================
-# 6. SCHEDULER (Every 15 mins)
+# 6. SCHEDULER
 # ========================================
 if __name__ == "__main__":
     scheduler = BlockingScheduler()
-    # Run at 1,16,31,46 minutes past the hour (aligned with 15m candle close)
     scheduler.add_job(
         trading_job,
         'cron',
         day_of_week='mon-fri',
         hour='0-23',
         minute='1,16,31,46',
-        timezone='America/Chicago'
+        timezone='America/Chicago',
+        misfire_grace_time=120
     )
-    print("FVG OANDA Trader Started. Waiting for next 15m candle...")
+    print(
+        f"FVG OANDA Trader Started for {INSTRUMENT}. Waiting for next 15m candle...")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
