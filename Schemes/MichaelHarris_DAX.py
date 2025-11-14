@@ -29,8 +29,8 @@ INSTRUMENT = "NZD_USD"
 # Options: Gran.M1, Gran.M5, Gran.M15, Gran.M30, Gran.H1, Gran.H4, etc.
 TIMEFRAME = Gran.M15
 TRADE_SIZE = 1000
-SL_PERCENTAGE = 0.04     # 4% Stop Loss
-TP_PERCENTAGE = 0.10     # 10% Take Profit
+SL_PERCENTAGE = 0.0002     # 0.02%
+TP_PERCENTAGE = 0.0006     # 0.06%
 USE_LIVE = False          # Set True for live trading, False for practice
 LOG_DIRECTORY = "./trading_logs"
 
@@ -327,7 +327,8 @@ if __name__ == "__main__":
         hour=cron.get('hour', '0-23'),
         minute=cron.get('minute', '*/15'),
         timezone='America/Chicago',
-        misfire_grace_time=120
+        misfire_grace_time=120,
+        max_instances=2
     )
 
     print(

@@ -188,6 +188,7 @@ if __name__ == "__main__":
         minute=run_minutes,
         timezone='America/Chicago',
         misfire_grace_time=120,
+        max_instances=2
     )
 
     print(f"{INSTRUMENT} Multi-Timeframe FVG OANDA Trader Started.")

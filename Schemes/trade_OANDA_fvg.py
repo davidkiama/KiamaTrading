@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 FVG + Key Level Breakout Strategy → Live OANDA Trading
-Uses real-time 15m XAU/USD data from OANDA (configurable instrument)
+Uses real-time 15m data from OANDA with configurable instrument and risk settings.
 """
 
 import pandas as pd
@@ -18,10 +18,15 @@ from config import access_token, accountID
 from tqdm import tqdm
 
 # ========================================
-# CONFIGURATION
+# CONFIGURATION (EASY TO TWEAK)
 # ========================================
-# Change this to any OANDA-supported instrument (e.g. "EUR_USD", "GBP_USD", "USD_JPY")
+
+# OANDA instrument (e.g., "XAU_USD", "EUR_USD", "USD_JPY")
 INSTRUMENT = "USD_CHF"
+LOT_SIZE = 1000             # Number of units (positive integer)
+STOP_LOSS_PCT = 0.001      # 0.1% instead of 0.02%
+TAKE_PROFIT_PCT = 0.002
+REAL_TRADING = False       # True = live trading, False = practice/sim
 
 # ========================================
 # 1. FVG DETECTION
@@ -84,8 +89,8 @@ def fill_key_levels(df, backcandles=50, test_candles=10):
             df, current_candle, backcandles, test_candles)
         support_levels = [(idx, level) for (idx, level)
                           in key_levels["support"] if idx < current_candle]
-        resistance_levels = [(idx, level) for (
-            idx, level) in key_levels["resistance"] if idx < current_candle]
+        resistance_levels = [(idx, level) for (idx, level)
+                             in key_levels["resistance"] if idx < current_candle]
         if support_levels or resistance_levels:
             df.at[current_candle, "key_levels"] = {
                 "support": support_levels,
@@ -127,8 +132,7 @@ def detect_break_signal(df):
 # ========================================
 
 def get_candles(n=200):
-    # Set real=True for live trading
-    client = CandleClient(access_token, real=False)
+    client = CandleClient(access_token, real=REAL_TRADING)
     pair_map = getattr(Pair, INSTRUMENT, None)
     if pair_map is None:
         raise ValueError(f"Unsupported instrument: {INSTRUMENT}")
@@ -138,7 +142,7 @@ def get_candles(n=200):
 
 
 # ========================================
-# 5. TRADING JOB (Runs every 15 mins)
+# 5. TRADING JOB
 # ========================================
 
 def trading_job():
@@ -165,50 +169,39 @@ def trading_job():
 
     latest_signal = dfstream['break_signal'].iloc[-1]
     current_price = dfstream['Close'].iloc[-1]
-    prev_low = dfstream['Low'].iloc[-2]
-    prev_high = dfstream['High'].iloc[-2]
 
-    print(f"Latest Signal: {latest_signal} | Price: {current_price:.3f}")
+    print(f"Latest Signal: {latest_signal} | Price: {current_price:.5f}")
 
     if latest_signal not in [1, 2]:
         print("No valid breakout signal.")
         return
 
-    SLTPRatio = 1.8
-    risk_units = 100  # Adjust for your account and risk settings
-
+    # Calculate SL/TP dynamically using percentage
     if latest_signal == 2:  # BUY
-        sl = prev_low
-        tp = current_price + SLTPRatio * (current_price - sl)
-        if tp <= current_price or sl >= current_price:
-            print("Invalid SL/TP for BUY.")
-            return
-
+        sl = current_price * (1 - STOP_LOSS_PCT)
+        tp = current_price * (1 + TAKE_PROFIT_PCT)
         mo = MarketOrderRequest(
             instrument=INSTRUMENT,
-            units=risk_units,
-            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.3f}").data,
-            stopLossOnFill=StopLossDetails(price=f"{sl:.3f}").data
+            units=LOT_SIZE,
+            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.5f}").data,
+            stopLossOnFill=StopLossDetails(price=f"{sl:.5f}").data
         )
         print(
-            f"BUY SIGNAL: Entry ~{current_price:.3f}, TP={tp:.3f}, SL={sl:.3f}")
+            f"BUY SIGNAL: Entry={current_price:.5f}, TP={tp:.5f}, SL={sl:.5f}")
 
     elif latest_signal == 1:  # SELL
-        sl = prev_high
-        tp = current_price - SLTPRatio * (sl - current_price)
-        if tp >= current_price or sl <= current_price:
-            print("Invalid SL/TP for SELL.")
-            return
-
+        sl = current_price * (1 + STOP_LOSS_PCT)
+        tp = current_price * (1 - TAKE_PROFIT_PCT)
         mo = MarketOrderRequest(
             instrument=INSTRUMENT,
-            units=-risk_units,
-            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.3f}").data,
-            stopLossOnFill=StopLossDetails(price=f"{sl:.3f}").data
+            units=-LOT_SIZE,
+            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.5f}").data,
+            stopLossOnFill=StopLossDetails(price=f"{sl:.5f}").data
         )
         print(
-            f"SELL SIGNAL: Entry ~{current_price:.3f}, TP={tp:.3f}, SL={sl:.3f}")
+            f"SELL SIGNAL: Entry={current_price:.5f}, TP={tp:.5f}, SL={sl:.5f}")
 
+    # Execute trade
     try:
         client = API(access_token)
         r = orders.OrderCreate(accountID, data=mo.data)
@@ -230,7 +223,8 @@ if __name__ == "__main__":
         hour='0-23',
         minute='1,16,31,46',
         timezone='America/Chicago',
-        misfire_grace_time=120
+        misfire_grace_time=120,
+        max_instances=2
     )
     print(
         f"FVG OANDA Trader Started for {INSTRUMENT}. Waiting for next 15m candle...")

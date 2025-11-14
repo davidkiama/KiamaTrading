@@ -192,7 +192,8 @@ if __name__ == "__main__":
         hour='0-23',
         minute='1,16,31,46',
         timezone='America/Chicago',
-        misfire_grace_time=120
+        misfire_grace_time=120,
+        max_instances=2
     )
 
     try:
