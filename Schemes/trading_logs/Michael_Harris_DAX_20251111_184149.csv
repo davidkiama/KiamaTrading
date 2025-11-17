@@ -1,0 +1,2 @@
+Trade_ID,Open_Time,Close_Time,Instrument,Direction,Entry_Price,Exit_Price,SL_Price,TP_Price,Units,Outcome,PnL,PnL_Percent,Duration_Minutes,Signal_Type
+UNKNOWN,2025-11-12 03:16:01,2025-11-12 04:31:01,EUR_USD,SELL,1.15725,0,1.2035399999999998,1.0415249999999998,-1000,CLOSED_UNKNOWN,0,0.0,75.00558135,BEARISH_DAX

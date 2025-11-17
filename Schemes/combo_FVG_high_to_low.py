@@ -50,7 +50,7 @@ my_data = flatten_yf_columns(my_data)
 my_data
 
 
-def detect_fvg(data, lookback_period=10, body_multiplier=1.5):
+def detect_fvg(data, lookback_period=14, body_multiplier=1.5):
     """
     Detects Fair Value Gaps (FVGs) in historical price data.
 

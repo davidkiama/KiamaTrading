@@ -16,7 +16,7 @@ df.head(10)
 
 df['Gmt time'] = pd.to_datetime(df['Gmt time'], format='%d.%m.%Y %H:%M:%S.%f')
 
-def detect_fvg(data, lookback_period=10, body_multiplier=1.5):
+def detect_fvg(data, lookback_period=14, body_multiplier=1.5):
     """
     Detects Fair Value Gaps (FVGs) in historical price data.
 

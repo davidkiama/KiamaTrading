@@ -33,7 +33,7 @@ REAL_TRADING = False       # True = live trading, False = practice/sim
 # ========================================
 
 
-def detect_fvg(data, lookback_period=10, body_multiplier=1.5):
+def detect_fvg(data, lookback_period=14, body_multiplier=1.5):
     fvg_list = [None, None]
     for i in range(2, len(data)):
         first_high = data['High'].iloc[i-2]

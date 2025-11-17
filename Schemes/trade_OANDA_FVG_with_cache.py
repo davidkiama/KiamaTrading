@@ -59,7 +59,7 @@ cache = StrategyCache()
 # ========================================
 
 
-def detect_fvg_single(data, index, lookback_period=10, body_multiplier=1.5):
+def detect_fvg_single(data, index, lookback_period=14, body_multiplier=1.5):
     """Detect FVG for a single candle at given index"""
     if index < 2:
         return None
@@ -84,7 +84,7 @@ def detect_fvg_single(data, index, lookback_period=10, body_multiplier=1.5):
     return None
 
 
-def detect_fvg_bulk(data, lookback_period=10, body_multiplier=1.5):
+def detect_fvg_bulk(data, lookback_period=14, body_multiplier=1.5):
     """Detect FVG for entire dataframe (initial load only)"""
     fvg_list = [None, None]
     for i in range(2, len(data)):
