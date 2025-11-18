@@ -24,7 +24,7 @@ from tqdm import tqdm
 # OANDA instrument (e.g., "XAU_USD", "EUR_USD", "USD_JPY")
 INSTRUMENT = "USD_CHF"
 LOT_SIZE = 1000             # Number of units (positive integer)
-STOP_LOSS_PCT = 0.001      # 0.1% instead of 0.02%
+STOP_LOSS_PCT = 0.001
 TAKE_PROFIT_PCT = 0.002
 REAL_TRADING = False       # True = live trading, False = practice/sim
 
