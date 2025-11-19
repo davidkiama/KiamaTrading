@@ -139,6 +139,8 @@ def find_support_resistance_levels(df, n1, n2, back_candles):
     ss.sort()
     i = 0
     while i < len(ss) - 1:
+        # Note: USD/JPY typically uses 3 decimal places for rounding,
+        # but the underlying calculation uses higher precision.
         if abs(ss[i] - ss[i+1]) <= PROXIMITY:
             del ss[i+1]
         else:
@@ -163,7 +165,7 @@ def find_nearest_level(price, levels):
     return min(levels, key=lambda x: abs(x - price))
 
 
-def is_level_tested(df, level, lookback=6):
+def is_level_tested(df, level, lookback=3):
     """Check if price has recently tested a level"""
     recent_lows = df['Low'].iloc[-lookback:]
     recent_highs = df['High'].iloc[-lookback:]
@@ -262,9 +264,10 @@ def generate_trading_signal(df_1h, df_30m, df_15m):
             # Check if support was recently tested
             if is_level_tested(df_30m, nearest_support):
                 # RSI confirmation: oversold or recovering
-                if current_rsi_30m < 55:
-                    print(f"✓ Support level tested: {nearest_support:.5f}")
-                    print(f"✓ RSI confirmation: {current_rsi_30m:.2f} < 55")
+                # Note: Setting confirmation ranges wide to capture potential reversal
+                if current_rsi_30m < 70:
+                    print(f"✓ Support level tested: {nearest_support:.3f}")
+                    print(f"✓ RSI confirmation: {current_rsi_30m:.2f} < 70")
 
                     sl = nearest_support - SL_BUFFER
                     risk = current_price - sl
@@ -272,7 +275,7 @@ def generate_trading_signal(df_1h, df_30m, df_15m):
 
                     return 'BUY', current_price, sl, tp
                 else:
-                    print(f"✗ RSI too high: {current_rsi_30m:.2f} >= 55")
+                    print(f"✗ RSI too high: {current_rsi_30m:.2f} >= 70")
             else:
                 print("✗ Support level not recently tested")
         else:
@@ -291,10 +294,11 @@ def generate_trading_signal(df_1h, df_30m, df_15m):
             # Check if resistance was recently tested
             if is_level_tested(df_30m, nearest_resistance):
                 # RSI confirmation: overbought or declining
-                if current_rsi_30m > 45:
+                # Note: Setting confirmation ranges wide to capture potential reversal
+                if current_rsi_30m > 30:
                     print(
-                        f"✓ Resistance level tested: {nearest_resistance:.5f}")
-                    print(f"✓ RSI confirmation: {current_rsi_30m:.2f} > 45")
+                        f"✓ Resistance level tested: {nearest_resistance:.3f}")
+                    print(f"✓ RSI confirmation: {current_rsi_30m:.2f} > 30")
 
                     sl = nearest_resistance + SL_BUFFER
                     risk = sl - current_price
@@ -302,7 +306,7 @@ def generate_trading_signal(df_1h, df_30m, df_15m):
 
                     return 'SELL', current_price, sl, tp
                 else:
-                    print(f"✗ RSI too low: {current_rsi_30m:.2f} <= 45")
+                    print(f"✗ RSI too low: {current_rsi_30m:.2f} <= 30")
             else:
                 print("✗ Resistance level not recently tested")
         else:
@@ -351,17 +355,20 @@ def trading_job():
         mo = MarketOrderRequest(
             instrument=INSTRUMENT,
             units=units,
-            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.5f}").data,
-            stopLossOnFill=StopLossDetails(price=f"{sl:.5f}").data
+            # CRITICAL FIX: USD/JPY uses 3 decimal places (e.g., 155.183)
+            # Rounding for the OANDA API request
+            takeProfitOnFill=TakeProfitDetails(price=f"{tp:.3f}").data,
+            stopLossOnFill=StopLossDetails(price=f"{sl:.3f}").data
         )
 
         print(f"\n{'='*60}")
         print(f"🎯 {signal} SIGNAL [{INSTRUMENT}]")
-        print(f"Entry: ~{entry:.5f}")
-        print(f"Stop Loss: {sl:.5f}")
-        print(f"Take Profit: {tp:.5f}")
-        print(f"Risk: {abs(entry - sl):.5f}")
-        print(f"Reward: {abs(tp - entry):.5f}")
+        # Adjust print output to 3 decimals for readability/consistency
+        print(f"Entry: ~{entry:.3f}")
+        print(f"Stop Loss: {sl:.3f}")
+        print(f"Take Profit: {tp:.3f}")
+        print(f"Risk: {abs(entry - sl):.3f}")
+        print(f"Reward: {abs(tp - entry):.3f}")
         print(f"R:R Ratio: 1:{SLTP_RATIO}")
         print(f"{'='*60}")
 
@@ -374,6 +381,11 @@ def trading_job():
 
     except Exception as e:
         print(f"\n✗ Error occurred: {str(e)}")
+        # Check if the error is the known precision issue
+        if "STOP_LOSS_ON_FILL_PRICE_PRECISION_EXCEEDED" in str(e):
+            print("\nNote: This error usually means your OANDA account for USD_JPY requires 3 decimal places (pips), but the calculation produced higher precision.")
+            print(
+                "The code has been fixed to round to 3 decimal places for the order execution.")
         import traceback
         traceback.print_exc()
 

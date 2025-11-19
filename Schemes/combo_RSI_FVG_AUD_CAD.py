@@ -163,7 +163,7 @@ def find_nearest_level(price, levels):
     return min(levels, key=lambda x: abs(x - price))
 
 
-def is_level_tested(df, level, lookback=6):
+def is_level_tested(df, level, lookback=3):
     """Check if price has recently tested a level"""
     recent_lows = df['Low'].iloc[-lookback:]
     recent_highs = df['High'].iloc[-lookback:]
@@ -262,7 +262,7 @@ def generate_trading_signal(df_1h, df_30m, df_15m):
             # Check if support was recently tested
             if is_level_tested(df_30m, nearest_support):
                 # RSI confirmation: oversold or recovering
-                if current_rsi_30m < 55:
+                if current_rsi_30m < 70:
                     print(f"✓ Support level tested: {nearest_support:.5f}")
                     print(f"✓ RSI confirmation: {current_rsi_30m:.2f} < 55")
 
@@ -272,7 +272,7 @@ def generate_trading_signal(df_1h, df_30m, df_15m):
 
                     return 'BUY', current_price, sl, tp
                 else:
-                    print(f"✗ RSI too high: {current_rsi_30m:.2f} >= 55")
+                    print(f"✗ RSI too high: {current_rsi_30m:.2f} >= 70")
             else:
                 print("✗ Support level not recently tested")
         else:
@@ -291,10 +291,10 @@ def generate_trading_signal(df_1h, df_30m, df_15m):
             # Check if resistance was recently tested
             if is_level_tested(df_30m, nearest_resistance):
                 # RSI confirmation: overbought or declining
-                if current_rsi_30m > 45:
+                if current_rsi_30m > 30:
                     print(
                         f"✓ Resistance level tested: {nearest_resistance:.5f}")
-                    print(f"✓ RSI confirmation: {current_rsi_30m:.2f} > 45")
+                    print(f"✓ RSI confirmation: {current_rsi_30m:.2f} > 30")
 
                     sl = nearest_resistance + SL_BUFFER
                     risk = sl - current_price
@@ -302,7 +302,7 @@ def generate_trading_signal(df_1h, df_30m, df_15m):
 
                     return 'SELL', current_price, sl, tp
                 else:
-                    print(f"✗ RSI too low: {current_rsi_30m:.2f} <= 45")
+                    print(f"✗ RSI too low: {current_rsi_30m:.2f} <= 30")
             else:
                 print("✗ Resistance level not recently tested")
         else:
