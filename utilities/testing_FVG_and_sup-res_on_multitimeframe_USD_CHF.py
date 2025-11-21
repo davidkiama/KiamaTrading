@@ -11,16 +11,16 @@ Conversion Date: 2025-11-20T15:07:58.799Z
 FVG + Multi-Timeframe Bias + 1H S/R Strategy → Live OANDA Trading
 Trades a configurable instrument using a multi-timeframe FVG bias and 1H S/R levels.
 """
-import numpy as np
 import pandas as pd
+import numpy as np
 from datetime import datetime
 import pytz
 from apscheduler.schedulers.blocking import BlockingScheduler
 from oandapyV20 import API
 import oandapyV20.endpoints.orders as orders
 from oandapyV20.contrib.requests import MarketOrderRequest, TakeProfitDetails, StopLossDetails
-from config import access_token, accountID
 from oanda_candles import Pair, Gran, CandleClient
+from config import access_token, accountID
 
 # ========================================
 # CONFIGURATION VARIABLES
@@ -225,8 +225,8 @@ def trading_job():
     # Fetch data for all required timeframes
     # We only need the latest 200 candles for analysis
     # NOTE: D1/H4/H1 are fetched with a lookback for S/R and FVG calc
-    df_d1 = fetch_candles_multi_granularity(Gran.D, n=30)
-    df_h4 = fetch_candles_multi_granularity(Gran.H4, n=70)
+    df_d1 = fetch_candles_multi_granularity(Gran.D, n=100)
+    df_h4 = fetch_candles_multi_granularity(Gran.H4, n=100)
     df_h1 = fetch_candles_multi_granularity(Gran.H1, n=100)
     df_m30 = fetch_candles_multi_granularity(Gran.M30, n=100)
     df_m15 = fetch_candles_multi_granularity(Gran.M15, n=100)
@@ -303,6 +303,7 @@ if __name__ == "__main__":
         'cron',
         day_of_week='mon-fri',
         hour='0-23',
+        # Run at 1,16,31,46 minutes past the hour (aligned with 15m candle close)
         minute=run_minutes,
         timezone='America/Chicago',
         misfire_grace_time=120,

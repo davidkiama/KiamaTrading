@@ -225,8 +225,8 @@ def trading_job():
     # Fetch data for all required timeframes
     # We only need the latest 200 candles for analysis
     # NOTE: D1/H4/H1 are fetched with a lookback for S/R and FVG calc
-    df_d1 = fetch_candles_multi_granularity(Gran.D, n=30)
-    df_h4 = fetch_candles_multi_granularity(Gran.H4, n=70)
+    df_d1 = fetch_candles_multi_granularity(Gran.D, n=100)
+    df_h4 = fetch_candles_multi_granularity(Gran.H4, n=100)
     df_h1 = fetch_candles_multi_granularity(Gran.H1, n=100)
     df_m30 = fetch_candles_multi_granularity(Gran.M30, n=100)
     df_m15 = fetch_candles_multi_granularity(Gran.M15, n=100)
