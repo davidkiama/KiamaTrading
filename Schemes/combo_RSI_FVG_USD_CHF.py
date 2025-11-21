@@ -195,7 +195,7 @@ def calculate_rsi(data, period=14):
 # 4. FETCH LIVE CANDLES
 # ========================================
 
-def fetch_candles_multi_granularity(granularity, n=200):
+def fetch_candles_multi_granularity(granularity, n=100):
     """Fetch candles and add technical indicators"""
     client = CandleClient(access_token, real=False)
     pair = getattr(Pair, INSTRUMENT)

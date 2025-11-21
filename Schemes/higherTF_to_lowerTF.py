@@ -87,7 +87,7 @@ def bearish_fvg_sell_signal_3tf(df_1h, df_30m, df_15m):
 # 3. FETCH LIVE CANDLES
 # ========================================
 
-def fetch_candles_multi_granularity(granularity, n=200):
+def fetch_candles_multi_granularity(granularity, n=100):
     client = CandleClient(access_token, real=False)
     pair = getattr(Pair, INSTRUMENT)  # Dynamically use the instrument
     collector = client.get_collector(pair, granularity)

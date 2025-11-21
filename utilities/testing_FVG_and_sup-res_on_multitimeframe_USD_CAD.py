@@ -198,7 +198,7 @@ def generate_signal(df_d1, df_h4, df_h1, df_m30, df_m15, h1_levels):
 # ========================================
 
 
-def fetch_candles_multi_granularity(granularity, n=200):
+def fetch_candles_multi_granularity(granularity, n=100):
     client = CandleClient(access_token, real=False)
     pair = getattr(Pair, INSTRUMENT)
     collector = client.get_collector(pair, granularity)
