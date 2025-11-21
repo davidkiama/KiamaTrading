@@ -131,9 +131,9 @@ def generate_signal(df_d1, df_h4, df_h1, df_m30, df_m15, h1_levels):
     # Step 1: Check FVG in at least two or more of the higher timeframes
     higher_tfs = [df_d1, df_h4, df_h1, df_m30]
 
-    # 1.1 Determine the Bias
     bullish_count = 0
     bearish_count = 0
+
     for df in higher_tfs:
         latest_fvg = df['FVG'].iloc[-1]
         if latest_fvg and latest_fvg[0] == 'bullish':
@@ -141,7 +141,7 @@ def generate_signal(df_d1, df_h4, df_h1, df_m30, df_m15, h1_levels):
         elif latest_fvg and latest_fvg[0] == 'bearish':
             bearish_count += 1
 
-    # Determine the Trend/Bias (at least 2 TFs in same direction)
+    # Determine trend/bias
     current_bias = None
     if bullish_count >= 2:
         current_bias = 'BULLISH'
@@ -151,64 +151,47 @@ def generate_signal(df_d1, df_h4, df_h1, df_m30, df_m15, h1_levels):
     if current_bias is None:
         return None, None, None, "No dominant multi-timeframe FVG bias (need >= 2)."
 
-    # Step 3: Check 15M FVG and S/R Cross
-    # 3.1 Check 15M FVG (at least 2 smaller FVGs in the same direction)
-    # Check the last 4 candles for 2 or more FVGs
-    # Check the most recent 3 (C-2, C-3, C-4)
+    # Step 2: Check 15M FVG (at least 2 FVGs in the same direction)
     m15_fvg_list = df_m15['FVG'].iloc[-4:-1].tolist()
-    m15_directional_fvg_count = 0
-    for fvg in m15_fvg_list:
-        if fvg and fvg[0] == current_bias.lower():
-            m15_directional_fvg_count += 1
+    m15_directional_fvg_count = sum(
+        1 for fvg in m15_fvg_list if fvg and fvg[0] == current_bias.lower()
+    )
 
     if m15_directional_fvg_count < 2:
-        return None, None, None, f"{current_bias} bias but < 2 directional 15M FVGs in last 3 candles."
+        return None, None, None, f"{current_bias} bias but < 2 directional 15M FVGs."
 
-    # 3.2 Check S/R Cross using the latest 1H levels and 15M price history
-    m15_lows = df_m15['Low'].iloc[-M15_CANDLES_FOR_CROSS:].values
-    m15_highs = df_m15['High'].iloc[-M15_CANDLES_FOR_CROSS:].values
+    # ============================
+    # ✔ NO MORE S/R CROSS CHECKS
+    # ============================
+
+    # Entry = Current 15M Close
     current_close = df_m15['Close'].iloc[-1]
+    entry_level = current_close
 
-    entry_level = None
+    # Use nearest opposite H1 S/R for stop loss
     stop_loss = None
 
     if current_bias == 'BULLISH':
-        # Bullish: We need to have recently crossed a Resistance level
-        for r_price in h1_levels['resistance']:
-            # Check if current price is above resistance AND price was below resistance recently
-            if current_close > r_price:
-                # Check if price was below this resistance in the lookback period
-                if (m15_highs < r_price).any():
-                    entry_level = r_price  # Entry is after the break of Resistance
-                    # Stop-loss will be slightly lower than the recent 1h support level that we just crossed
-                    # We use the HIGHEST support level that is BELOW the entry resistance
-                    relevant_supports = [
-                        s for s in h1_levels['support'] if s < r_price]
-                    if relevant_supports:
-                        sl_support = max(relevant_supports)
-                        stop_loss = sl_support - SL_BUFFER_FACTOR
-                        return 'BUY', entry_level, stop_loss, f"BULLISH break of R @ {r_price:.5f}, SL at S @ {sl_support:.5f}"
-                    # If no support below, we can't place a valid stop-loss, so we continue
+        # SL under nearest support
+        if h1_levels["support"]:
+            sl_support = min(h1_levels["support"])
+            stop_loss = sl_support - SL_BUFFER_FACTOR
+        else:
+            return None, None, None, "No H1 support available for SL."
+
+        return 'BUY', entry_level, stop_loss, "BULLISH bias + 15M confirmation."
 
     elif current_bias == 'BEARISH':
-        # Bearish: We need to have recently crossed a Support level
-        for s_price in h1_levels['support']:
-            # Check if current price is below support AND price was above support recently
-            if current_close < s_price:
-                # Check if price was above this support in the lookback period
-                if (m15_lows > s_price).any():
-                    entry_level = s_price  # Entry is after the break of Support
-                    # Stop-loss will be slightly above the 1h resistance that we just crossed
-                    # We use the LOWEST resistance level that is ABOVE the entry support
-                    relevant_resistances = [
-                        r for r in h1_levels['resistance'] if r > s_price]
-                    if relevant_resistances:
-                        sl_resistance = min(relevant_resistances)
-                        stop_loss = sl_resistance + SL_BUFFER_FACTOR
-                        return 'SELL', entry_level, stop_loss, f"BEARISH break of S @ {s_price:.5f}, SL at R @ {sl_resistance:.5f}"
-                    # If no resistance above, we can't place a valid stop-loss, so we continue
+        # SL above nearest resistance
+        if h1_levels["resistance"]:
+            sl_resistance = max(h1_levels["resistance"])
+            stop_loss = sl_resistance + SL_BUFFER_FACTOR
+        else:
+            return None, None, None, "No H1 resistance available for SL."
 
-    return None, None, None, f"{current_bias} bias, but no recent S/R cross found with valid SL/TP."
+        return 'SELL', entry_level, stop_loss, "BEARISH bias + 15M confirmation."
+
+    return None, None, None, "Unexpected condition."
 
 # ========================================
 # 4. FETCH LIVE CANDLES (UPDATED FOR D1/H4)
