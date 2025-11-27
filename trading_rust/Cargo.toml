@@ -1,0 +1,12 @@
+[package]
+name = "trading_rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+numpy = "0.20"
+
+[lib]
+name = "trading_rust"
+crate-type = ["cdylib"]
