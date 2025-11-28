@@ -85,7 +85,7 @@ def add_ichimoku(df, tenkan=TENKAN, kijun=KIJUN, senkou_b=SENKOU_B):
 # 2. ICHIMOKU RETRACEMENT SIGNAL
 # ========================================
 
-def detect_ichimoku_retracement(df, lookback=5):
+def detect_ichimoku_retracement(df, lookback=7):
     """
     Detect Ichimoku retracement signals:
     - Price pulls back to touch/support cloud
@@ -267,7 +267,7 @@ def generate_signal(df_d1, df_h4, df_h1, df_m30, df_m15, m30_levels):
         return None, None, None, None, f"{bias} bias but 15M FVG is opposite direction"
 
     # Step 3: Check Ichimoku retracement on 15M
-    retrace_signal = detect_ichimoku_retracement(df_m15, lookback=5)
+    retrace_signal = detect_ichimoku_retracement(df_m15, lookback=7)
 
     if retrace_signal is None:
         return None, None, None, None, f"{bias} bias + 15M FVG but no Ichimoku retrace"
