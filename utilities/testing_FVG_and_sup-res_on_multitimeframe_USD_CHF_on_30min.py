@@ -11,16 +11,17 @@ Conversion Date: 2025-11-20T15:07:58.799Z
 FVG + Multi-Timeframe Bias + 1H S/R Strategy → Live OANDA Trading
 Trades a configurable instrument using a multi-timeframe FVG bias and 1H S/R levels.
 """
+from trade_logger import log_executed_trade
+from oanda_candles import Pair, Gran, CandleClient
+from config import access_token, accountID
+from oandapyV20.contrib.requests import MarketOrderRequest, TakeProfitDetails, StopLossDetails
+import oandapyV20.endpoints.orders as orders
+from oandapyV20 import API
+from apscheduler.schedulers.blocking import BlockingScheduler
+import pytz
+from datetime import datetime
 import numpy as np
 import pandas as pd
-from datetime import datetime
-import pytz
-from apscheduler.schedulers.blocking import BlockingScheduler
-from oandapyV20 import API
-import oandapyV20.endpoints.orders as orders
-from oandapyV20.contrib.requests import MarketOrderRequest, TakeProfitDetails, StopLossDetails
-from config import access_token, accountID
-from oanda_candles import Pair, Gran, CandleClient
 
 # ========================================
 # CONFIGURATION VARIABLES
@@ -287,6 +288,14 @@ def trading_job():
         client = API(access_token)
         r = orders.OrderCreate(accountID, data=mo.data)
         rv = client.request(r)
+        log_executed_trade(
+            instrument=INSTRUMENT,
+            signal="BUY",
+            entry=current_price,
+            sl=sl_price,
+            tp=tp_price,
+            timeframe="15M"
+        )
         print("Order executed:", rv)
     except Exception as e:
         print("Order failed:", str(e))

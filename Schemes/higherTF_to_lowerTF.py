@@ -15,6 +15,7 @@ import pytz
 from datetime import datetime
 import pandas as pd
 import numpy as np
+from trade_logger import log_executed_trade
 
 
 # ========================================
@@ -167,14 +168,22 @@ def trading_job():
         client = API(access_token)
         r = orders.OrderCreate(accountID, data=mo.data)
         rv = client.request(r)
+        log_executed_trade(
+            instrument=INSTRUMENT,
+            signal="BUY",
+            entry=current_price,
+            sl=sl,
+            tp=tp,
+            timeframe="15M"
+        )
         print("Order executed:", rv)
     except Exception as e:
         print("Order failed:", str(e))
 
-
 # ========================================
 # 5. SCHEDULER (Every N mins)
 # ========================================
+
 
 if __name__ == "__main__":
     run_minutes = ",".join(str(i) for i in range(1, 60, N))

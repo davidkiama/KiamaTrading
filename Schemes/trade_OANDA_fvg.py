@@ -16,6 +16,7 @@ from oandapyV20.contrib.requests import MarketOrderRequest, TakeProfitDetails, S
 from oanda_candles import Pair, Gran, CandleClient
 from config import access_token, accountID
 from tqdm import tqdm
+from trade_logger import log_executed_trade
 
 # ========================================
 # CONFIGURATION (EASY TO TWEAK)
@@ -206,6 +207,14 @@ def trading_job():
         client = API(access_token)
         r = orders.OrderCreate(accountID, data=mo.data)
         rv = client.request(r)
+        log_executed_trade(
+            instrument=INSTRUMENT,
+            signal="BUY",
+            entry=current_price,
+            sl=sl,
+            tp=tp,
+            timeframe="15M"
+        )
         print("Order executed:", rv)
     except Exception as e:
         print("Order failed:", str(e))
